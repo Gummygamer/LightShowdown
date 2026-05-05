@@ -9,11 +9,24 @@
  */
 
 var ipToLong = exports.ipToLong = function (ip) {
+	if (typeof ip !== 'string') {
+		throw new RangeError('Invalid IPv4 address: ' + ip);
+	}
 	var numIp = 0;
 	var parts = ip.split('.');
-	for (var i = 0, len = parts.length; i < len; i++) {
+	if (parts.length !== 4) {
+		throw new RangeError('Invalid IPv4 address: ' + ip);
+	}
+	for (var i = 0; i < 4; i++) {
+		if (!/^\d+$/.test(parts[i])) {
+			throw new RangeError('Invalid IPv4 address: ' + ip);
+		}
+		var part = Number(parts[i]);
+		if (part < 0 || part > 255 || part % 1 !== 0) {
+			throw new RangeError('Invalid IPv4 address: ' + ip);
+		}
 		numIp *= 256;
-		numIp += Number(parts[i]);
+		numIp += part;
 	}
 	return numIp;
 };
@@ -23,11 +36,18 @@ var getPattern = exports.getPattern = function (cidr) {
 	var index = cidr.indexOf('/');
 	if (index > 0) {
 		var subnet = ipToLong(cidr.substr(0, index));
-		var bits = parseInt(cidr.substr(index + 1), 10);
-		var mask = -1 << (32 - bits);
+		var bitString = cidr.substr(index + 1);
+		if (!/^\d+$/.test(bitString)) {
+			throw new RangeError('Invalid CIDR range: ' + cidr);
+		}
+		var bits = Number(bitString);
+		if (bits < 0 || bits > 32 || bits % 1 !== 0) {
+			throw new RangeError('Invalid CIDR range: ' + cidr);
+		}
+		var mask = bits ? -1 << (32 - bits) : 0;
 		return [subnet & mask, mask];
 	}
-	return [ipToLong(cidr), -1];
+	return [ipToLong(cidr) | 0, -1];
 };
 
 /**
